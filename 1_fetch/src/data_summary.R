@@ -1,57 +1,120 @@
-# this is "1_fetch/src/data_summary"
-# this file will be used for summarizing outputs of linear regressions
+## ---------------------------
+##
+## Script name: data_map.R
+##
+## Purpose of script: mapping reaches $ their annual observations
+##
+## Author: Jack Holbrook (USGS)
+##
+## ---------------------------
+## Notes:
+##     ~ this is the file that runs linear regressions
+## ---------------------------
 
-DRB_monthly <- function(regressionData, fileout)
+flexible_linear_regression <- function(sites, type)
 {
-  months = c("January", "February", "March", "April", "May", "June", "July", "August", 
-             "September", "October", "November", "December")
-  # take return from monthly_trend_analysis
-  lr_list = list()
-  month_order <- c(1:12)
-  #order dataframe by increasing months
-  regressionData <- regressionData[match(month_order, regressionData$month),]
-  for (i in unique(regressionData$month)) 
+  #where sites is each branched target, and type is the type of linear regression that is be run 
+  if (type == 1)
   {
-    unique_month <- regressionData %>% 
-      filter(month == i) %>% 
-      drop_na(month_mean)
-    lr <- lm(month_mean ~ year, data = unique_month)
-    lr_list[[i]] = lr
+    lr <- lm(month_mean ~ year, data = sites)
+    sum_lr <- summary(lr)
+    r_cor <- cor(sites$year, sites$month_mean) 
+    max_temp <-  max(sites$month_mean, na.rm = TRUE)
+    mean_temp <- mean(sites$month_mean, na.rm = TRUE)
+    min_temp <-  min(sites$month_mean, na.rm = TRUE)
   }
-
-  pdf(fileout)
-  for (i in unique(regressionData$month)) 
+  else if (type == 2)
   {
-    print(lr_list[[i]])
-    unique_month <- regressionData %>% 
-      filter(month == i) 
-    #print(plot(lr_list[[i]]))  #difficult to interpret
-    print(plot(unique_month$year, unique_month$month_mean, main = months[i],
-              xlab = "year", ylab = "mean temperature on the month in celsius"))
-    print(lines(predict(lr), col = 'green'))
+    #2 will be the mean of max's. 
+    lr <- lm(month_meanOfMax ~ year, data = sites)
+    sum_lr <- summary(lr)
+    r_cor <- cor(sites$year, sites$month_meanOfMax) 
+    max_temp <-  max(sites$month_meanOfMax, na.rm = TRUE)
+    mean_temp <- mean(sites$month_meanOfMax, na.rm = TRUE)
+    min_temp <-  min(sites$month_meanOfMax, na.rm = TRUE)
   }
-  return(fileout)
-}
-
-regress_site <- function(sites)
-{
-  # This should be all I need if my targets are dynamically branching
-  lr <- lm(month_mean ~ year, data = sites)
-  sum_lr <- summary(lr)
-  #return(sum_lr)
+  else if (type == 3)
+  {
+    lr <- lm(month_meanOfMin ~ year, data = sites)
+    sum_lr <- summary(lr)
+    r_cor <- cor(sites$year, sites$month_meanOfMin) 
+    max_temp <-  max(sites$month_meanOfMin, na.rm = TRUE)
+    mean_temp <- mean(sites$month_meanOfMin, na.rm = TRUE)
+    min_temp <-  min(sites$month_meanOfMin, na.rm = TRUE)
+  }
+  else if (type == 4)
+  {
+    lr <- lm(annual_mean ~ year, data = sites)
+    sum_lr <- summary(lr)
+    
+    r_cor <- cor(sites$year, sites$annual_mean) 
+    max_temp <-  max(sites$annual_mean, na.rm = TRUE)
+    mean_temp <- mean(sites$annual_mean, na.rm = TRUE)
+    min_temp <-  min(sites$annual_mean, na.rm = TRUE)
+  }
+  stats <- c(sum_lr$coefficients[[1]],
+             sum_lr$coefficients[[2]])
   
-  stats <- c(sum_lr$coefficients[[1]],
-             sum_lr$coefficients[[2]], .name_spec = "{outer}_{inner}")
-
-  print("got here")
-  return(stats)
+  dfstats <- data.frame("seg_id_nat" = sites$seg_id_nat[[1]], 
+                        "Month" = sites$month[[1]],
+                        "max_temp_observed" = max_temp,
+                        "mean_monthly_temp" = mean_temp,
+                        "min_temp_observed" = min_temp,
+                        "Date Range" = lubridate::as.interval(start = sites$date[[1]], sites$date[[nrow(sites)]]),
+                        "years" = sites$n_year[[1]],
+                        "Slope" = stats[2],
+                        "r" = r_cor,
+                        "r2" = r_cor*r_cor
+                        )
+  return(dfstats)
 }
 
-build_statistics <- function(sum_lr)
+write_summary_positive <- function(dfstats)
 {
-  # takes each branch summary and returns an vector in correct format
-  stats <- c(sum_lr$coefficients[[1]],
-             sum_lr$coefficients[[2]], .name_spec = "{outer}_{inner}")
-  return(stats)
+#These will only include metrics from the month of July since that is the hottest month on record
+  month_table <- dfstats %>% 
+    filter(Month == 7) %>% 
+    filter(Slope > 0.0)
+
+  df_positive <-  data.frame(
+   # "Positive values" = NULL,
+    "median_temp" = median(month_table$mean_monthly_temp),
+    "greatest_change" = max(month_table$Slope),
+    "median_change" = median(month_table$Slope),
+    "least_change" = min(month_table$Slope)
+  )
+  df_positive_transpose <- as.data.frame(t(as.matrix(df_positive)))
+  # seg_id_vect <- c(which(median(month_table$mean_monthly_temp)), which(max(month_table$Slope)),
+  #                  which(median(month_table$Slope)), which(min(month_table$Slope)))
+  seg_id_vect <- c(match(median(month_table$mean_monthly_temp),month_table), match(max(month_table$Slope),month_table),
+                   match(median(month_table$Slope),month_table), match(min(month_table$Slope),month_table))
+  df_positive_transpose <- cbind(df_positive_transpose, seg_id_vect)
+  return(df_positive_transpose)
 }
 
+write_summary_negative <- function(dfstats)
+{
+  month_table <- dfstats %>% 
+    filter(Month == 7) %>% 
+    filter(Slope < 0.0)
+  
+  df_negative <-  data.frame(
+  #"Negative values" = NULL,
+  "median_temp" = median(month_table$mean_monthly_temp),
+  "greatest_change" = max(month_table$Slope),
+  "median_change" = median(month_table$Slope), 
+  "least_change" = min(month_table$Slope)
+  )
+  
+  df_negative_transpose <- as.data.frame(t(as.matrix(df_negative)))
+  seg_id_vect <- c(match(median(month_table$mean_monthly_temp),month_table), match(max(month_table$Slope),month_table),
+                   match(median(month_table$Slope),month_table), match(min(month_table$Slope),month_table))
+  df_negative_transpose <- cbind(df_negative_transpose, seg_id_vect)
+  return(df_negative_transpose)
+}
+
+bind_transposed <- function(df_positive_transpose, df_negative_transpose)
+{
+final_df <- bind_rows(df_positive_transpose, df_negative_transpose)
+return(final_df)
+}
