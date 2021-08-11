@@ -18,7 +18,7 @@ flexible_linear_regression <- function(sites, type)
   {
     lr <- lm(month_mean ~ year, data = sites)
     sum_lr <- summary(lr)
-    r_cor <- cor(sites$year, sites$month_mean) 
+    rs <- sum_lr$r.squared
     max_temp <-  max(sites$month_mean, na.rm = TRUE)
     mean_temp <- mean(sites$month_mean, na.rm = TRUE)
     min_temp <-  min(sites$month_mean, na.rm = TRUE)
@@ -28,7 +28,7 @@ flexible_linear_regression <- function(sites, type)
     #2 will be the mean of max's. 
     lr <- lm(month_meanOfMax ~ year, data = sites)
     sum_lr <- summary(lr)
-    r_cor <- cor(sites$year, sites$month_meanOfMax) 
+    rs <- sum_lr$r.squared
     max_temp <-  max(sites$month_meanOfMax, na.rm = TRUE)
     mean_temp <- mean(sites$month_meanOfMax, na.rm = TRUE)
     min_temp <-  min(sites$month_meanOfMax, na.rm = TRUE)
@@ -37,20 +37,39 @@ flexible_linear_regression <- function(sites, type)
   {
     lr <- lm(month_meanOfMin ~ year, data = sites)
     sum_lr <- summary(lr)
-    r_cor <- cor(sites$year, sites$month_meanOfMin) 
+    rs <- sum_lr$r.squared 
     max_temp <-  max(sites$month_meanOfMin, na.rm = TRUE)
     mean_temp <- mean(sites$month_meanOfMin, na.rm = TRUE)
     min_temp <-  min(sites$month_meanOfMin, na.rm = TRUE)
   }
   else if (type == 4)
   {
+    # kept as of 12:34 pm on monday 8-2
+    # here there is a problem of one of the targets having all NA values
+    if(all(is.nan(sites$annual_mean)))
+    {
+      return(  dfstats <- data.frame("seg_id_nat" = sites$seg_id_nat[[1]], 
+                                     "Month" = sites$month[[1]],
+                                     "max_temp_observed" = 0,
+                                     "mean_monthly_temp" = 0,
+                                     "min_temp_observed" = 0,
+                                     "Date Range" = lubridate::as.interval(start = sites$date[[1]], sites$date[[nrow(sites)]]),
+                                     "years" = sites$n_year[[1]],
+                                     "Slope" = 0,
+                                     "r" = 0,
+                                     "r2" = 0
+      ))
+    }
+    else{
     lr <- lm(annual_mean ~ year, data = sites)
     sum_lr <- summary(lr)
     
-    r_cor <- cor(sites$year, sites$annual_mean) 
+    #r_cor <- cor(sites$year, sites$annual_mean, use="everything") 
+    rs <- sum_lr$r.squared
     max_temp <-  max(sites$annual_mean, na.rm = TRUE)
     mean_temp <- mean(sites$annual_mean, na.rm = TRUE)
     min_temp <-  min(sites$annual_mean, na.rm = TRUE)
+    }
   }
   stats <- c(sum_lr$coefficients[[1]],
              sum_lr$coefficients[[2]])
@@ -63,10 +82,26 @@ flexible_linear_regression <- function(sites, type)
                         "Date Range" = lubridate::as.interval(start = sites$date[[1]], sites$date[[nrow(sites)]]),
                         "years" = sites$n_year[[1]],
                         "Slope" = stats[2],
-                        "r" = r_cor,
-                        "r2" = r_cor*r_cor
+                        #"r" = rs^(1/2),
+                        "r2" = rs
                         )
   return(dfstats)
+}
+
+summarize_table <- function(regression_table)
+{
+  summaryT <- regression_table %>% 
+    group_by(seg_id_nat, months) %>% 
+    summarise(Min_slope = min(Slope), 
+              Max_slope = max(Slope),
+              strongest_correlation = max(r),
+              max_temp_observed = max(max_temp_observed),
+              min_temp_observed = min(min_temp_observed),
+              sd_across_branches = sd(mean_monthly_temp),
+              Quartile_range_across_branches = IQR(mean_monthly_temp),
+              longest_observation = max(years))
+  
+  return(summaryT)
 }
 
 write_summary_positive <- function(dfstats)
