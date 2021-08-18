@@ -37,7 +37,7 @@ summarize_targets_list <- list(
                data_for_trend_analysis, month, seg_id_nat),
   
   tar_group_by(year_data,
-               year_trend_analysis, year, seg_id_nat),
+               year_trend_analysis, seg_id_nat),
   
   meanofmean_regressions <- tar_target(meanofmean_regression,
                                        flexible_linear_regression(month_data, 1), pattern = map(month_data), iteration = "group"),
