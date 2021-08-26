@@ -2,7 +2,7 @@
 ##
 ## Script name: data_map.R
 ##
-## Purpose of script: mapping reaches $ their annual observations
+## Purpose of script: mapping reaches and their annual observations
 ##
 ## Author: Jack Holbrook (USGS)
 ##
@@ -11,111 +11,242 @@
 ##     ~
 ## ---------------------------
 
-map_sites <- function(data_for_trend_analysis_month, in_network) 
+boxplot_func <- function(regression_data, type, site_info)
+{
+  browser()
+  # this is new, used to jion data
+  site_info <- read_csv(site_info)
+  #regression_data <- left_join(regression_data, select(site_info, site_id = site_id, reservoir_code))
+  regression_data <- regression_data %>% left_join(site_info, by = 'site.id')
+  #regression_data <- regression_data %>% full_join(regression_data, by = 'site.id')
+  if (type == 3) 
   {
+    browser()
+    regression_data$Month <- as.factor(regression_data$Month)
+    regression_data$Slope <- as.numeric(regression_data$Slope)
+    regression_data$reservoir_code <- as.factor(regression_data$reservoir_code)
+    month_list <- c("January", "February", "March", "April", "May", "June", "July", "August",
+                    "September", "October", "November", "December")
+    regression_data$Month <- month_list[regression_data$Month]
+    
+    labs <- levels(cut(regression_data$Slope, 12))
+    binned_slope <- cut(regression_data$Slope, 12, inlcude.lowest = TRUE, labels = labs)
+    
+    names(regression_data)[names(regression_data) == 'reservoir_code'] <- 'Reservoir Code'
+    names(regression_data)[names(regression_data) == 'is_significant'] <- 'Significant above a P of 0.01'
+    
+    regression_data$Month <- factor(regression_data$Month, levels = month.name)
+    regression_data <- filter(regression_data, !is.na(`Reservoir Code`))
+    boxp <- ggplot(regression_data, aes(x = Month, y = Slope, group = Month, color = `Reservoir Code`, show.legend = TRUE))+
+      geom_hline(yintercept=0, linetype="dashed", color = "black") +
+      geom_violin() +
+      stat_summary(fun = median, fun.min = median, fun.max = median,
+                   geom = "crossbar",
+                   width = 0.25, color = 'red') +
+      #geom_jitter(shape=16, position=position_jitter(0.2), alpha = 0.4) +
+      geom_jitter(aes(shape=`Significant above a P of 0.01`), position=position_jitter(0.2), alpha = 0.4) +
+      scale_shape_manual(values = c(1,16)) +
+      # theme_bw(axis.text.x = element_text(angle = 90)) +
+      theme_bw() +
+      #theme() +
+      scale_color_brewer(palette="Dark2") +
+      ggtitle("Distribution of Stream Segment Trends for Each Month") + 
+      xlab("Months") +
+      ylab("site Trends") 
+    
+    this_filename <- file.path('2_map', 'out', 'boxplots_monthly_min.png')
+    ggsave(filename = this_filename, boxp, height = 7, width = 12)
+    return(this_filename)
+  }
+  if (type == 2) 
+  {
+    browser()
+    regression_data$Month <- as.factor(regression_data$Month)
+    regression_data$Slope <- as.numeric(regression_data$Slope)
+    regression_data$reservoir_code <- as.factor(regression_data$reservoir_code)
+    month_list <- c("January", "February", "March", "April", "May", "June", "July", "August",
+                    "September", "October", "November", "December")
+    regression_data$Month <- month_list[regression_data$Month]
+
+    labs <- levels(cut(regression_data$Slope, 12))
+    binned_slope <- cut(regression_data$Slope, 12, inlcude.lowest = TRUE, labels = labs)
+  
+    names(regression_data)[names(regression_data) == 'reservoir_code'] <- 'Reservoir Code'
+    names(regression_data)[names(regression_data) == 'is_significant'] <- 'Significant above a P of 0.01'
+    
+    regression_data$Month <- factor(regression_data$Month, levels = month.name)
+    regression_data <- filter(regression_data, !is.na(`Reservoir Code`))
+    boxp <- ggplot(regression_data, aes(x = Month, y = Slope, group = Month, color = `Reservoir Code`, show.legend = TRUE))+
+      geom_hline(yintercept=0, linetype="dashed", color = "black") +
+      geom_violin() +
+      stat_summary(fun = median, fun.min = median, fun.max = median,
+                   geom = "crossbar",
+                   width = 0.25, color = 'red') +
+      #geom_jitter(shape=16, position=position_jitter(0.2), alpha = 0.4) +
+      geom_jitter(aes(shape=`Significant above a P of 0.01`), position=position_jitter(0.2), alpha = 0.4) +
+      scale_shape_manual(values = c(1,16)) +
+     # theme_bw(axis.text.x = element_text(angle = 90)) +
+      theme_bw() +
+      #theme() +
+      scale_color_brewer(palette="Dark2") +
+      ggtitle("Distribution of Stream Segment Trends for Each Month") + 
+      xlab("Months") +
+      ylab("site Trends") 
+    
+    this_filename <- file.path('2_map', 'out', 'boxplots_monthly_mean.png')
+    ggsave(filename = this_filename, boxp, height = 7, width = 12)
+    return(this_filename)
+  }
+  else if (type == 1)
+  {
+    browser()
+    regression_data$Month <- as.factor(regression_data$Month)
+    regression_data$Slope <- as.numeric(regression_data$Slope)
+    regression_data$reservoir_code <- as.factor(regression_data$reservoir_code)
+    month_list <- c("January", "February", "March", "April", "May", "June", "July", "August",
+                    "September", "October", "November", "December")
+    regression_data$Month <- month_list[regression_data$Month]
+    
+    labs <- levels(cut(regression_data$Slope, 12))
+    binned_slope <- cut(regression_data$Slope, 12, inlcude.lowest = TRUE, labels = labs)
+    
+    names(regression_data)[names(regression_data) == 'reservoir_code'] <- 'Reservoir Code'
+    names(regression_data)[names(regression_data) == 'is_significant'] <- 'Significant above a P of 0.01'
+    
+    regression_data$Month <- factor(regression_data$Month, levels = month.name)
+    regression_data <- filter(regression_data, !is.na(`Reservoir Code`))
+    boxp <- ggplot(regression_data, aes(x = Month, y = Slope, group = Month, color = `Reservoir Code`, show.legend = TRUE))+
+      geom_hline(yintercept=0, linetype="dashed", color = "black") +
+      geom_violin() +
+      stat_summary(fun = median, fun.min = median, fun.max = median,
+                   geom = "crossbar",
+                   width = 0.25, color = 'red') +
+      #geom_jitter(shape=16, position=position_jitter(0.2), alpha = 0.4) +
+      geom_jitter(aes(shape=`Significant above a P of 0.01`), position=position_jitter(0.2), alpha = 0.4) +
+      scale_shape_manual(values = c(1,16)) +
+      # theme_bw(axis.text.x = element_text(angle = 90)) +
+      theme_bw() +
+      #theme() +
+      scale_color_brewer(palette="Dark2") +
+      ggtitle("Distribution of Stream Segment Trends for Each Month") + 
+      xlab("Months") +
+      ylab("site Trends") 
+    
+    this_filename <- file.path('2_map', 'out', 'boxplots_monthly_max.png')
+    ggsave(filename = this_filename, boxp, height = 7, width = 12)
+    return(this_filename)
+  }
+}
+
+# added a third inupuit 8-18-2021
+map_sites <- function(data_for_trend_analysis_month, in_network, in_crosswalk) 
+{
+  browser()
+  
+  points <- as.data.frame(readRDS(in_crosswalk))
+  site_v <- data_for_trend_analysis_month$site.id
+  names(points)[names(points) == 'site_id'] <- 'site.id'
+  select_points <- filter(points, points$site.id %in% site_v)
   net <- readRDS(in_network)[[1]]
-  # joins attribute w/ spatial data
-  net_d <- left_join(net, select(data_for_trend_analysis_month, seg_id_nat = seg_id_nat, Slope))
+  #net_df <- as.data.frame(readRDS(in_network))
+  
+  # joins attribute w/ spatial data from attribute to points
+  net_d <- net %>% left_join(points, by = 'seg_id_nat')  # this works!
+  # example is below:
+  #regression_data <- regression_data %>% left_join(site_info, by = 'site.id')
+  
+  # joins attribute w/ spatial data from attribute & points to netowrk lines
+  names(net_d)[names(net_d) == 'site_id'] <- 'site.id'
+  net_d <- net_d %>% left_join(data_for_trend_analysis_month, by = 'site.id') 
+  # net_p <- left_join(points, select(data_for_trend_analysis_month, site_id = site_id, Slope))
+  # net_p <- st_as_sf(net_p)
+  
+  points_p <- st_as_sf(select_points, coords = c("longitude", "latitude"), 
+                       crs = 4326)
+  #net_p <- left_join(points, select(points, seg_id_nat = seg_id_nat, geometry, ID, longitude, latitude))
   # reassign variable name for a better legend
   names(net_d)[names(net_d) == 'Slope'] <- 'Warming Trend degC Year'
   #  assigns file name based off date month, is same value for each branch
   month <- unique((data_for_trend_analysis_month$Month))
   month_list <- c("January", "February", "March", "April", "May", "June", "July", "August",
-                     "September", "October", "November", "December")
+                  "September", "October", "November", "December")
   monthname <- month_list[month]
-  
-  browser()
   
   title <- "DRB wide warming trend for the month of "
   background <- st_as_sf(maps::map("state", plot = FALSE, fill = TRUE))
-  DRB_states <- c("new jersey", "pennsylvania", "delaware", "maryland",  "new york")
-  background <- background[background$ID=="new jersey" | background$ID=="pennsylvania" | background$ID=="delaware" | background$ID=="maryland" | background$ID=="new york",]  # this should turn background data into a subset
-  #do.call(rbind.data.frame, background)
-  # aoi <- st_bbox(c(xmin = min(network[2]$vertices$geometry[[1]]), xmax = max(network[2]$vertices$geometry[[1]]),
-  #                  ymax = max(network[2]$vertices$geometry[[2]]), ymin = min(network[2]$vertices$geometry[[2]])), 
-  #                crs = st_crs(4326))
+  #DRB_states <- c("new jersey", "pennsylvania", "delaware", "maryland",  "new york")
+  
+  # this should turn background data into a subset
+  background <- background[background$ID=="new jersey" | background$ID=="pennsylvania" |
+                             background$ID=="delaware" | background$ID=="maryland" | background$ID=="new york",]  
+  aoi <- st_crop(points_p, xmin = min(points$longitude), xmax = max(points$longitude),
+                            ymin = min(points$latitude), ymax = max(points$latitude),
+                            crs = 4326)
   p <- ggplot(net_d) +
-    
-    # filter to sites with a n_all_time value, which indicates at least some data
-   
-     # color by how much data a segment has
-    
     geom_sf(data = background, fill="white") +
     geom_sf(color = 'grey') +
     geom_sf(data = filter(net_d, !is.na(`Warming Trend degC Year`)), aes(color =`Warming Trend degC Year`)) +
-    # geom_polygon(data = background, aes(x=long, y=lat, group=group),
-    #             color="black", fill="gray") +
-    # coord_sf(xlim = c(min(in_network[2]$vertices$geometry[[1]]), max(in_network[2]$vertices$geometry[[1]])),
-    #          ylim = c(max(in_network[2]$vertices$geometry[[2]]), min(in_network[2]$vertices$geometry[[2]])), 
-    #          expand = FALSE) +
-    scale_color_viridis_c(direction = -1, option = 'plasma', end = 1) +
+    #geom_sf(data = net_p) + #filter(net_p, !is.na(`Warming Trend degC Year`)), aes(color =`Warming Trend degC Year`)) +   #$seg_id_nat == data_for_trend_analysis_month$seg_id_nat), aes(color = fish_dist_to_outlet_m)) +
+    #geom_point(data = net_d, aes(x = longitude, y = latitude, size = years))
+
+    
     theme_bw() +
+    geom_sf(data = points_p) +
+    coord_sf(xlim = c(min(points$longitude), xmax = max(points$longitude)),
+             ylim = c(ymin = min(points$latitude), ymax = max(points$latitude)),
+             crs = 4326) +
+    #geom_sf(color = 'blue') +
+    scale_color_viridis_c(direction = -1, option = 'plasma', end = 1) +
+    
     ggtitle(paste(title, monthname, sep = ""))+ 
     xlab(expression(paste(Longitude^o,~'N'))) +
     ylab(expression(paste(Latitude^o,~'W')))
-
+  
   #saving file
   this_filename <-  file.path('2_map/', 'out/', monthname, '.png', fsep = "")
   ggsave(filename = this_filename, p, height = 7, width = 5)
   return(this_filename)
 }
 
-boxplot_func <- function(regression_data, type)
+map_tiles <-function(data_for_trend_analysis_month, in_network)   # takes in the sample spatial data as other function
 {
-  if (type == 2) 
-  {
-    regression_data$Month <- as.factor(regression_data$Month)
-    #regression_data$Slope <- as.factor(regression_data$Slope)
-    # group_colors <- ifelse(levels(regression_data$Slope)>0.0, rgb(0.1,0.1,0.7,0.5),
-    #                 ifelse(levels(regression_data$Slope)<0.0, rgb(0.8,0.1,0.3,0.6),
-    #                             "grey90"  ))
-    month_list <- c("January", "February", "March", "April", "May", "June", "July", "August",
-                    "September", "October", "November", "December")
-    regression_data$Month <- month_list[regression_data$Month]
-    boxp <- ggplot(regression_data, aes(x = Month, y = Slope))+
-      #geom_boxplot(fill = as.numeric(range(cut(regression_data$Month, breaks = -6:6, label = FALSE)))) + 
-      geom_boxplot(fill = "blue") +
-      # aes(fill = after_scale()),size =1)+
-      # theme(legend.position="none") +
-      theme(axis.text.x = element_text(angle = 90)) +
-      scale_fill_distiller(palette = "RdYlGn", guide = "none") + 
-      ggtitle("Distribution of Stream Segment Trends for Each Month")+ 
-      xlab("Individual Segments") +
-      ylab("site Trends") 
-      
-    
-    this_filename <- file.path('2_map', 'out', 'boxplots_monthly.png')
-    ggsave(filename = this_filename, boxp, height = 7, width = 5)
-    return(this_filename)
-  }
-  else if (type == 1)
-  {
-    regression_data$seg_id_nat <- as.factor(regression_data$seg_id_nat)
-    boxp <- ggplot(regression_data, aes(x = seg_id_nat, y = Slope))+
-      geom_boxplot()+
-      ggtitle("Distribution of Stream Segment Trends for Each Segment")+ 
-      xlab("Individual Segments") +
-      ylab("Yearly mean temperatures") +
-      theme(axis.text.x = element_text(angle = 90))
-    
-    this_filename <-  file.path('2_map', 'out', 'boxplots_annual.png')
-    ggsave(filename = this_filename, boxp, height = 7, width = 5)
-    return(this_filename)
-  }
+  
+  browser()
+  
+  # simply trying to get an interactive tile map of the same static map
+  net <- readRDS(in_network)[[1]]
+  # use for plotting number of observations
+  month <- unique((data_for_trend_analysis_month$Month))
+  month_list <- c("January", "February", "March", "April", "May", "June", "July", "August",
+                  "September", "October", "November", "December")
+  monthname <- month_list[month]
+  
+  net_d <- left_join(net, select(data_for_trend_analysis_month, seg_id_nat = seg_id_nat, Slope))
+  net_d <- net_d[!rowSums(is.na(net_d["Slope"])), ] 
+  #pal = mapviewpalette("")
+  map_view <- mapview(net_d, zcol =  "",
+                      col.regions = c("yellow", "orange", "pink", "red", "purple"))
+  
+  map_shot <- mapshot(map_view, url = paste0(getwd(), '2_map/out/satMap.html')
+                      #,file = paste0(getwd(), "/map.png")
+  )
+  return('2_map/out/satMap.html')  # hooray! this works!
 }
 
 hist_func <- function(regression_data)
 {
+  browser()
+  
   # takes annual data since the boxplots no longer works for annual data:
-  regression_data$seg_id_nat <- as.factor(regression_data$seg_id_nat)
-  boxp <- ggplot(regression_data, aes(x = Slope))+  #x = seg_id_nat, y = Slope
+ # regression_data$seg_id_nat <- as.factor(regression_data$seg_id_nat)
+  boxp <- ggplot(regression_data, aes(x = r2))+  #x = seg_id_nat, y = Slope
     geom_histogram()+
     ggtitle("Distribution of Stream Segment Trends for Each Segment")+ 
     xlab("Individual Segments") +
     ylab("Yearly mean temperatures") +
     theme(axis.text.x = element_text(angle = 90))
   
-  this_filename <-  file.path('2_map', 'out', 'boxplots_annual.png')
-  ggsave(filename = this_filename, boxp, height = 7, width = 5)
+  this_filename <-  file.path('2_map', 'out', 'trends_hist.png')
+  ggsave(filename = this_filename, boxp, height = 7, width = 12)
   return(this_filename)
 }

@@ -13,12 +13,16 @@
 
 flexible_linear_regression <- function(sites, type)
 {
+  
+  #browser()
+  
   #where sites is each branched target, and type is the type of linear regression that is be run 
   if (type == 1)
   {
     lr <- lm(month_mean ~ year, data = sites)
     sum_lr <- summary(lr)
     rs <- sum_lr$r.squared
+    p_vlaue <- sum_lr$coefficients[,4][2]
     max_temp <-  max(sites$month_mean, na.rm = TRUE)
     mean_temp <- mean(sites$month_mean, na.rm = TRUE)
     min_temp <-  min(sites$month_mean, na.rm = TRUE)
@@ -29,6 +33,7 @@ flexible_linear_regression <- function(sites, type)
     lr <- lm(month_meanOfMax ~ year, data = sites)
     sum_lr <- summary(lr)
     rs <- sum_lr$r.squared
+    p_vlaue <- sum_lr$coefficients[,4][2]
     max_temp <-  max(sites$month_meanOfMax, na.rm = TRUE)
     mean_temp <- mean(sites$month_meanOfMax, na.rm = TRUE)
     min_temp <-  min(sites$month_meanOfMax, na.rm = TRUE)
@@ -38,6 +43,7 @@ flexible_linear_regression <- function(sites, type)
     lr <- lm(month_meanOfMin ~ year, data = sites)
     sum_lr <- summary(lr)
     rs <- sum_lr$r.squared 
+    p_vlaue <- sum_lr$coefficients[,4][2]
     max_temp <-  max(sites$month_meanOfMin, na.rm = TRUE)
     mean_temp <- mean(sites$month_meanOfMin, na.rm = TRUE)
     min_temp <-  min(sites$month_meanOfMin, na.rm = TRUE)
@@ -48,7 +54,7 @@ flexible_linear_regression <- function(sites, type)
     # here there is a problem of one of the targets having all NA values
     if(all(is.nan(sites$annual_mean)))
     {
-      return(  dfstats <- data.frame("seg_id_nat" = sites$seg_id_nat[[1]], 
+      return(  dfstats <- data.frame("site id" = sites$site_id[[1]], 
                                      "Month" = sites$month[[1]],
                                      "max_temp_observed" = 0,
                                      "mean_monthly_temp" = 0,
@@ -56,16 +62,16 @@ flexible_linear_regression <- function(sites, type)
                                      "Date Range" = lubridate::as.interval(start = sites$date[[1]], sites$date[[nrow(sites)]]),
                                      "years" = sites$n_year[[1]],
                                      "Slope" = 0,
-                                     "r" = 0,
+                                     "p_value" = 0,
+                                     "is_significant" = 0,
                                      "r2" = 0
       ))
     }
     else{
     lr <- lm(annual_mean ~ year, data = sites)
     sum_lr <- summary(lr)
-    
-    #r_cor <- cor(sites$year, sites$annual_mean, use="everything") 
     rs <- sum_lr$r.squared
+    p_vlaue <- sum_lr$coefficients[,4][2]
     max_temp <-  max(sites$annual_mean, na.rm = TRUE)
     mean_temp <- mean(sites$annual_mean, na.rm = TRUE)
     min_temp <-  min(sites$annual_mean, na.rm = TRUE)
@@ -74,7 +80,7 @@ flexible_linear_regression <- function(sites, type)
   stats <- c(sum_lr$coefficients[[1]],
              sum_lr$coefficients[[2]])
   
-  dfstats <- data.frame("seg_id_nat" = sites$seg_id_nat[[1]], 
+  dfstats <- data.frame("site id" = sites$site_id[[1]], 
                         "Month" = sites$month[[1]],
                         "max_temp_observed" = max_temp,
                         "mean_monthly_temp" = mean_temp,
@@ -83,6 +89,8 @@ flexible_linear_regression <- function(sites, type)
                         "years" = sites$n_year[[1]],
                         "Slope" = stats[2],
                         #"r" = rs^(1/2),
+                        "p_value" = p_vlaue,
+                        "is_significant" = p_vlaue < 0.01,
                         "r2" = rs
                         )
   return(dfstats)
@@ -152,4 +160,21 @@ bind_transposed <- function(df_positive_transpose, df_negative_transpose)
 {
 final_df <- bind_rows(df_positive_transpose, df_negative_transpose)
 return(final_df)
+}
+
+line_plot2 <- function(segment)
+{
+  p <- ggplot(data=segment, aes(x=date, y=max_temp_degC, group=1)) +
+    geom_line()+
+    geom_point()+
+    theme_bw() +
+    #theme() +
+    scale_color_brewer(palette="Dark2") +
+    ggtitle("Temperature trend at Port Jervis, New York") + 
+    xlab("Date") +
+    ylab("Max Daily Temperature") 
+  
+  this_filename <-  file.path('3_summarize/', 'out/', 'line_plot_july', '.png', fsep = "")
+  ggsave(filename = this_filename, p, height = 7, width = 12)
+  return(this_filename)
 }
